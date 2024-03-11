@@ -13,7 +13,7 @@ from sqlalchemy import (
     DateTime,
 )
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.sql import select
+from sqlalchemy.sql import select, delete
 from datetime import datetime
 from pydantic import BaseModel, field_validator
 from config import (
@@ -128,7 +128,32 @@ async def send_data_to_subscribers(user_id: int, data):
 async def create_processed_agent_data(data: List[ProcessedAgentData]):
     # Insert data to database
     # Send data to subscribers
-    pass
+    with SessionLocal() as db:
+        results = []
+        for item in data:
+            try:
+                dict = {
+                    "road_state": item.road_state,
+                    "user_id": item.agent_data.user_id,
+                    "x": item.agent_data.accelerometer.x,
+                    "y": item.agent_data.accelerometer.y,
+                    "z": item.agent_data.accelerometer.z,
+                    "latitude": item.agent_data.gps.latitude,
+                    "longitude": item.agent_data.gps.longitude,
+                    "timestamp": item.agent_data.timestamp.isoformat()
+                }
+
+                ins = processed_agent_data.insert().values(dict)
+                db.execute(ins)
+                db.commit()
+                
+                results.append(dict)
+            except Exception as e:
+                db.rollback()
+                raise e
+        
+        if len(results) > 0:
+            await send_data_to_subscribers(data[0].agent_data.user_id, results)
 
 
 @app.get(
@@ -136,14 +161,24 @@ async def create_processed_agent_data(data: List[ProcessedAgentData]):
     response_model=ProcessedAgentDataInDB,
 )
 def read_processed_agent_data(processed_agent_data_id: int):
-    # Get data by id
-    pass
+    with SessionLocal() as db:
+        stmt = select(processed_agent_data).where(processed_agent_data.c.id == processed_agent_data_id)
+        result = db.execute(stmt).fetchone()
+
+        if result is None:
+            raise HTTPException(status_code=404, detail="ProcessedAgentData not found")
+
+        return ProcessedAgentDataInDB(**result._asdict())
 
 
 @app.get("/processed_agent_data/", response_model=list[ProcessedAgentDataInDB])
 def list_processed_agent_data():
     # Get list of data
-    pass
+    with SessionLocal() as db:
+        stmt = select(processed_agent_data)
+        results = db.execute(stmt).fetchall()
+
+        return [ProcessedAgentDataInDB(**row._asdict()) for row in results]
 
 
 @app.put(
@@ -161,7 +196,19 @@ def update_processed_agent_data(processed_agent_data_id: int, data: ProcessedAge
 )
 def delete_processed_agent_data(processed_agent_data_id: int):
     # Delete by id
-    pass
+    with SessionLocal() as db:
+        stmt = select(processed_agent_data).where(processed_agent_data.c.id == processed_agent_data_id)
+        result = db.execute(stmt).fetchone()
+
+        if result is None:
+            raise HTTPException(status_code=404, detail="ProcessedAgentData not found")
+
+        stmt = delete(processed_agent_data).where(processed_agent_data.c.id == processed_agent_data_id)
+
+        db.execute(stmt)
+        db.commit()
+
+        return ProcessedAgentDataInDB(**result._asdict())
 
 
 if __name__ == "__main__":

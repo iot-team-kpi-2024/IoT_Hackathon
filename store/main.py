@@ -13,7 +13,8 @@ from sqlalchemy import (
     DateTime,
 )
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.sql import select, delete
+from sqlalchemy.sql import select, update, delete
+from sqlalchemy.exc import NoResultFound
 from datetime import datetime
 from pydantic import BaseModel, field_validator
 from config import (
@@ -186,8 +187,29 @@ def list_processed_agent_data():
     response_model=ProcessedAgentDataInDB,
 )
 def update_processed_agent_data(processed_agent_data_id: int, data: ProcessedAgentData):
-    # Update data
-    pass
+    with SessionLocal() as db:
+        stmt = update(processed_agent_data).where(processed_agent_data.c.id == processed_agent_data_id).values(
+            road_state=data.road_state,
+            user_id=data.agent_data.user_id,
+            x=data.agent_data.accelerometer.x,
+            y=data.agent_data.accelerometer.y,
+            z=data.agent_data.accelerometer.z,
+            latitude=data.agent_data.gps.latitude,
+            longitude=data.agent_data.gps.longitude,
+            timestamp=data.agent_data.timestamp
+        )
+
+        result = db.execute(stmt)
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail="ProcessedAgentData not found")
+        db.commit()
+
+        try:
+            updated_stmt = select(processed_agent_data).where(processed_agent_data.c.id == processed_agent_data_id)
+            updated_result = db.execute(updated_stmt).one()
+            return ProcessedAgentDataInDB(**updated_result._asdict())
+        except NoResultFound:
+            raise HTTPException(status_code=404, detail="Failed to fetch updated ProcessedAgentData")
 
 
 @app.delete(

@@ -25,26 +25,26 @@ def connect_mqtt(broker, port):
     return client
 
 
-def publish(client, topics, datasource, delay):
+def publish(client, topics, datasource, delay, batch_size):
     datasource.startReading()
     while True:
         time.sleep(delay)
 
-        data, parking = datasource.read()
-        msgs = [
-            AggregatedDataSchema().dumps(data),
-            ParkingSchema().dumps(parking)
-        ]
-        
-        for topic, item in zip(topics, msgs):
-            result = client.publish(topic, item)
+        for data, parking in datasource.read(batch_size):
+            msgs = [
+                AggregatedDataSchema().dumps(data),
+                ParkingSchema().dumps(parking)
+            ]
+            
+            for topic, item in zip(topics, msgs):
+                result = client.publish(topic, item)
 
-            status = result[0]
-            if status == 0:
-                pass
-                # print(f"Send `{msg}` to topic `{topic}`")
-            else:
-                print(f"Failed to send message to topic {topic}")
+                status = result[0]
+                if status == 0:
+                    pass
+                    # print(f"Send `{msg}` to topic `{topic}`")
+                else:
+                    print(f"Failed to send message to topic {topic}")
 
 
 def run():
@@ -53,7 +53,7 @@ def run():
     # Prepare datasource
     datasource = FileDatasource("data/accelerometer.csv", "data/gps.csv", "data/parking.csv")
     # Infinity publish data
-    publish(client, config.MQTT_TOPIC, datasource, config.DELAY)
+    publish(client, config.MQTT_TOPIC, datasource, config.DELAY, config.BATCH_SIZE)
 
 
 if __name__ == "__main__":

@@ -29,23 +29,26 @@ class FileDatasource:
         self.readers[FileDatasource.DataKeys.GPS.value] = DatasourceReader(gps_filename, GpsSchema()) 
         self.readers[FileDatasource.DataKeys.PARKING.value] = DatasourceReader(parking_filename, ParkingEmptyCount()) 
 
-    def read(self) -> AggregatedData:
+    def read(self, batch_size) -> AggregatedData:
         """Метод повертає дані отримані з датчиків"""
         for reader in self.readers:
             if not reader.reader:
                 raise Exception("CSV Readers not initialized. Call startReading first.")
         
+        result = [None] * batch_size
+
         try:
-            accelerometer = Accelerometer(**self.readers[FileDatasource.DataKeys.ACCELEROMETER.value].read())
-            gps = Gps(**self.readers[FileDatasource.DataKeys.GPS.value].read())
-            parking_count = self.readers[FileDatasource.DataKeys.PARKING.value].read()["empty_count"]
+            for i in range(batch_size):
+                accelerometer = Accelerometer(**self.readers[FileDatasource.DataKeys.ACCELEROMETER.value].read())
+                gps = Gps(**self.readers[FileDatasource.DataKeys.GPS.value].read())
+                parking_count = self.readers[FileDatasource.DataKeys.PARKING.value].read()["empty_count"]
 
-            timestamp = datetime.now()
+                result[i] = AggregatedData(accelerometer, gps, datetime.now(), config.USER_ID), Parking(parking_count, gps)
 
-            return AggregatedData(accelerometer, gps, timestamp, config.USER_ID), Parking(parking_count, gps)
+            return result
         except Exception as err:
             print(f"Validation error: {err}")
-            return None
+            return []
 
     def startReading(self, *args, **kwargs):
         """Метод повинен викликатись перед початком читання даних"""
@@ -70,7 +73,17 @@ class DatasourceReader:
         self.reader = DictReader(self.file)
     
     def read(self):
-        return self.schema.load(next(self.reader, None))
+        row = next(self.reader, None)
+
+        if row is None:
+            self.reset()
+            row = next(self.reader, None)
+
+        return self.schema.load(row)
+    
+    def reset(self):
+        self.file.seek(0)
+        self.reader = DictReader(self.file)
     
     def stopReading(self):
         if self.file:

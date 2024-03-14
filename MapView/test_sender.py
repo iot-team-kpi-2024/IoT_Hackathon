@@ -4,6 +4,8 @@ import json
 
 from file_datasource import FileDatasource
 from schemas import *
+from scipy.signal import find_peaks
+import numpy as np
 
 def create_processed_agent_data(aggregated_data) -> ProcessedAgentData:
     return ProcessedAgentData(
@@ -22,11 +24,15 @@ def create_processed_agent_data(aggregated_data) -> ProcessedAgentData:
     )
 
 def process_accelerometer_data(processed_data: list[ProcessedAgentData]):
-    for item in data:
-        if item.accelerometer.Z > 1700:
-            item.road_state = "bump"
-        elif item.accelerometer.Z < 1500:
-            item.road_state = "pothole"
+    z_values = np.array([item.agent_data.accelerometer.z for item in processed_data])
+    maximum = find_peaks(z_values, height=17000, distance=10, prominence=1000, width=10)
+    minimum = find_peaks(-z_values, height=-15000, distance=15, prominence=1000, width=15)
+
+    for idx in maximum[0]:
+        processed_data[idx].road_state = "bump"
+
+    for idx in minimum[0]:
+        processed_data[idx].road_state = "pothole"
 
 # main
 file_datasource = FileDatasource("data.csv", "gps.csv")

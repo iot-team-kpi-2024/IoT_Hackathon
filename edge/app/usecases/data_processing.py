@@ -16,9 +16,9 @@ def process_agent_data(
 
     value = agent_data.accelerometer.z
 
-    if value <= -1700:
+    if -value >= -15000:
         road_state = "pothole"
-    elif value >= 1700:
+    elif value >= 17000:
         road_state = "bump"
 
     return ProcessedAgentData(road_state=road_state, agent_data=agent_data)

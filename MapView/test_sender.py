@@ -35,7 +35,7 @@ def process_accelerometer_data(processed_data: list[ProcessedAgentData]):
         processed_data[idx].road_state = "pothole"
 
 # main
-file_datasource = FileDatasource("data.csv", "gps.csv")
+file_datasource = FileDatasource("MapView/data.csv", "MapView/gps.csv")
 file_datasource.startReading()
 
 while True:

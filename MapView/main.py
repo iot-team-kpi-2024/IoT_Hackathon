@@ -4,12 +4,13 @@ from kivy_garden.mapview import MapMarker, MapView
 from kivy.clock import Clock
 from lineMapLayer import LineMapLayer
 from datasource import Datasource
-from functools import partial
+import queue
 
 class MapViewApp(App):
     def __init__(self, **kwargs):
         super().__init__()
         self._datasource = Datasource(user_id=1)
+        self._process_queue = queue.Queue()
 
     def on_start(self):
         """
@@ -21,15 +22,15 @@ class MapViewApp(App):
         """
         Викликається регулярно для оновлення мапи
         """
-        new_points = self._datasource.get_new_points()
-        for idx, point in enumerate(new_points):
-            Clock.schedule_once(partial(self.update_couroutine, point), idx * 0.1)
+        for point in self._datasource.get_new_points():
+            self._process_queue.put(point)
 
-    def update_couroutine(self, point, *args):
-        coordinates = (point[0], point[1])
-        self.lines_layer.add_point(coordinates)
-        self.update_car_marker(coordinates)
-        self.check_road_quality(point)
+        if not self._process_queue.qsize() == 0:
+            point = self._process_queue.get()
+            coordinates = (point[0], point[1])
+            self.lines_layer.add_point(coordinates)
+            self.update_car_marker(coordinates)
+            self.check_road_quality(point)
 
     def check_road_quality(self, point):
         """

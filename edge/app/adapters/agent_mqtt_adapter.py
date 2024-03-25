@@ -2,7 +2,7 @@ import logging
 import paho.mqtt.client as mqtt
 from app.interfaces.agent_gateway import AgentGateway
 from app.entities.agent_data import AgentData, GpsData
-from app.usecases.data_processing import process_agent_data
+from app.usecases.data_processing import process_agent_data_batch
 from app.interfaces.hub_gateway import HubGateway
 
 
@@ -13,9 +13,10 @@ class AgentMQTTAdapter(AgentGateway):
         broker_port,
         topic,
         hub_gateway: HubGateway,
-        batch_size=10,
+        batch_size=100,
     ):
         self.batch_size = batch_size
+        self.agent_data_list = []
         # MQTT
         self.broker_host = broker_host
         self.broker_port = broker_port
@@ -36,12 +37,15 @@ class AgentMQTTAdapter(AgentGateway):
         try:
             payload: str = msg.payload.decode("utf-8")
             # Create AgentData instance with the received data
-            agent_data = AgentData.model_validate_json(payload, strict=True)
+            self.agent_data_list.append(AgentData.model_validate_json(payload, strict=True))
             # Process the received data (you can call a use case here if needed)
-            processed_data = process_agent_data(agent_data)
-            # Store the agent_data in the database (you can send it to the data processing module)
-            if not self.hub_gateway.save_data(processed_data):
-                logging.error("Hub is not available")
+            if len(self.agent_data_list) >= self.batch_size:
+                processed_data_batch = process_agent_data_batch(self.agent_data_list)
+                self.agent_data_list = []
+                # Store the agent_data in the database (you can send it to the data processing module)
+                for data in processed_data_batch:
+                    if not self.hub_gateway.save_data(data):
+                        logging.error("Hub is not available")
         except Exception as e:
             logging.info(f"Error processing MQTT message: {e}")
 

@@ -10,6 +10,7 @@ from config import (
     HUB_MQTT_BROKER_HOST,
     HUB_MQTT_BROKER_PORT,
     HUB_MQTT_TOPIC,
+    BATCH_SIZE
 )
 
 if __name__ == "__main__":
@@ -37,6 +38,7 @@ if __name__ == "__main__":
         broker_port=MQTT_BROKER_PORT,
         topic=MQTT_TOPIC,
         hub_gateway=hub_adapter,
+        batch_size=BATCH_SIZE
     )
     try:
         # Connect to the MQTT broker and start listening for messages

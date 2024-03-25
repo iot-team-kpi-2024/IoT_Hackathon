@@ -13,9 +13,15 @@ class Gps:
     latitude: float
     
 @dataclass
+class Humidex:
+    temperature: float
+    humidity: float
+
+@dataclass
 class AggregatedData:
     accelerometer: Accelerometer
     gps: Gps
+    humidex: Humidex
     time: datetime
 
 
@@ -30,6 +36,10 @@ class GpsSchema(Schema):
     longitude = fields.Number()
     latitude = fields.Number()
 
+class HumidexSchema(Schema):
+    temperature = fields.Number()
+    humidity = fields.Number()
+
 
 from pydantic import BaseModel, field_validator
 from datetime import datetime
@@ -43,10 +53,20 @@ class GpsData(BaseModel):
     latitude: float
     longitude: float
 
+class HumidexData(BaseModel):
+    temperature: float
+    humidity: float
+
+class AnemometerData(BaseModel):
+    speed: float
+    direction: float
+
 class AgentData(BaseModel):
     user_id: int
     accelerometer: AccelerometerData
     gps: GpsData
+    humidex: HumidexData
+    anemometer: AnemometerData
     timestamp: datetime
 
     @classmethod
@@ -63,4 +83,6 @@ class AgentData(BaseModel):
 
 class ProcessedAgentData(BaseModel):
     road_state: str
+    humidex_state: str
+    wind_chill_state: str
     agent_data: AgentData

@@ -13,9 +13,22 @@ class GpsData(BaseModel):
     longitude: float
 
 
+class HumidexData(BaseModel):
+    temperature: float
+    humidity: float
+
+
+class AnemometerData(BaseModel):
+    speed: float
+    direction: float
+
+
 class AgentData(BaseModel):
+    user_id: int
     accelerometer: AccelerometerData
     gps: GpsData
+    humidex: HumidexData
+    anemometer: AnemometerData
     timestamp: datetime
 
     @classmethod

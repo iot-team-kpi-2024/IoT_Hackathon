@@ -10,12 +10,18 @@ from config import STORE_HOST, STORE_PORT
 # Pydantic models
 class ProcessedAgentData(BaseModel):
     road_state: str
+    humidex_state: str
+    wind_chill_state: str
     user_id: int
     x: float
     y: float
     z: float
     latitude: float
     longitude: float
+    temperature: float
+    humidity: float
+    speed: float
+    direction: float
     timestamp: datetime
 
     @classmethod
@@ -75,6 +81,9 @@ class Datasource:
                 processed_agent_data.latitude,
                 processed_agent_data.longitude,
                 processed_agent_data.road_state,
+                processed_agent_data.humidex_state,
+                processed_agent_data.wind_chill_state,
+                processed_agent_data.direction
             )
             for processed_agent_data in processed_agent_data_list
         ]

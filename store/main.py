@@ -37,12 +37,18 @@ processed_agent_data = Table(
     metadata,
     Column("id", Integer, primary_key=True, index=True),
     Column("road_state", String),
+    Column("humidex_state", String),
+    Column("wind_chill_state", String),
     Column("user_id", Integer),
     Column("x", Float),
     Column("y", Float),
     Column("z", Float),
     Column("latitude", Float),
     Column("longitude", Float),
+    Column("temperature", Float),
+    Column("humidity", Float),
+    Column("speed", Float),
+    Column("direction", Float),
     Column("timestamp", DateTime),
 )
 SessionLocal = sessionmaker(bind=engine)
@@ -52,12 +58,18 @@ SessionLocal = sessionmaker(bind=engine)
 class ProcessedAgentDataInDB(BaseModel):
     id: int
     road_state: str
+    humidex_state: str
+    wind_chill_state: str
     user_id: int
     x: float
     y: float
     z: float
     latitude: float
     longitude: float
+    temperature: float
+    humidity: float
+    speed: float
+    direction: float
     timestamp: datetime
 
 
@@ -72,11 +84,20 @@ class GpsData(BaseModel):
     latitude: float
     longitude: float
 
+class HumidexData(BaseModel):
+    temperature: float
+    humidity: float
+
+class AnemometerData(BaseModel):
+    speed: float
+    direction: float
 
 class AgentData(BaseModel):
     user_id: int
     accelerometer: AccelerometerData
     gps: GpsData
+    humidex: HumidexData
+    anemometer: AnemometerData
     timestamp: datetime
 
     @classmethod
@@ -94,6 +115,8 @@ class AgentData(BaseModel):
 
 class ProcessedAgentData(BaseModel):
     road_state: str
+    humidex_state: str
+    wind_chill_state: str
     agent_data: AgentData
 
 
@@ -135,12 +158,18 @@ async def create_processed_agent_data(data: List[ProcessedAgentData]):
             try:
                 dict = {
                     "road_state": item.road_state,
+                    "humidex_state": item.humidex_state,
+                    "wind_chill_state": item.wind_chill_state,
                     "user_id": item.agent_data.user_id,
                     "x": item.agent_data.accelerometer.x,
                     "y": item.agent_data.accelerometer.y,
                     "z": item.agent_data.accelerometer.z,
                     "latitude": item.agent_data.gps.latitude,
                     "longitude": item.agent_data.gps.longitude,
+                    "temperature": item.agent_data.humidex.temperature,
+                    "humidity": item.agent_data.humidex.humidity,
+                    "speed": item.agent_data.anemometer.speed,
+                    "direction": item.agent_data.anemometer.direction,
                     "timestamp": item.agent_data.timestamp.isoformat()
                 }
 
@@ -190,12 +219,18 @@ def update_processed_agent_data(processed_agent_data_id: int, data: ProcessedAge
     with SessionLocal() as db:
         stmt = update(processed_agent_data).where(processed_agent_data.c.id == processed_agent_data_id).values(
             road_state=data.road_state,
+            humidex_state=data.humidex_state,
+            wind_chill_state=data.wind_chill_state,
             user_id=data.agent_data.user_id,
             x=data.agent_data.accelerometer.x,
             y=data.agent_data.accelerometer.y,
             z=data.agent_data.accelerometer.z,
             latitude=data.agent_data.gps.latitude,
             longitude=data.agent_data.gps.longitude,
+            temperature=data.agent_data.humidex.temperature,
+            humidity=data.agent_data.humidex.humidity,
+            speed = data.agent_data.anemometer.speed,
+            direction = data.agent_data.anemometer.direction,
             timestamp=data.agent_data.timestamp
         )
 

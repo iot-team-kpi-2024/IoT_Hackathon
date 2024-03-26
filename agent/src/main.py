@@ -2,7 +2,6 @@ from paho.mqtt import client as mqtt_client
 import json
 import time
 from schema.aggregated_data_schema import AggregatedDataSchema
-from schema.parking_schema import ParkingSchema
 from file_datasource import FileDatasource
 import config
 
@@ -25,33 +24,29 @@ def connect_mqtt(broker, port):
     return client
 
 
-def publish(client, topics, datasource, delay, batch_size):
+def publish(client, topic: str, datasource: FileDatasource, delay: float, batch_size: int):
     datasource.startReading()
     while True:
         time.sleep(delay)
 
-        for data, parking in datasource.read(batch_size):
-            msgs = [
-                AggregatedDataSchema().dumps(data),
-                ParkingSchema().dumps(parking)
-            ]
+        for data in datasource.read(batch_size):
+            aggregated_data = AggregatedDataSchema().dumps(data)
             
-            for topic, item in zip(topics, msgs):
-                result = client.publish(topic, item)
+            result = client.publish(topic, aggregated_data)
 
-                status = result[0]
-                if status == 0:
-                    pass
-                    # print(f"Send `{msg}` to topic `{topic}`")
-                else:
-                    print(f"Failed to send message to topic {topic}")
+            status = result[0]
+            if status == 0:
+                pass
+                # print(f"Send `{msg}` to topic `{topic}`")
+            else:
+                print(f"Failed to send message to topic {topic}")
 
 
 def run():
     # Prepare mqtt client
     client = connect_mqtt(config.MQTT_BROKER_HOST, config.MQTT_BROKER_PORT)
     # Prepare datasource
-    datasource = FileDatasource("data/accelerometer.csv", "data/gps.csv", "data/parking.csv")
+    datasource = FileDatasource("data/accelerometer.csv", "data/gps.csv", "data/humidex.csv", "data/anemometer.csv")
     # Infinity publish data
     publish(client, config.MQTT_TOPIC, datasource, config.DELAY, config.BATCH_SIZE)
 
